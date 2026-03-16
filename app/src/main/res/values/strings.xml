@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">NSFW Shield</string>
-    <string name="accessibility_service_description">NSFW Shield uses Accessibility to detect and blur explicit content on your screen across browsers, social media, and other apps. All processing happens entirely on your device.</string>
-    <string name="vpn_service_description">NSFW Shield creates a local VPN connection for DNS-level filtering to block explicit content domains. No data is routed through external servers.</string>
-</resources>
