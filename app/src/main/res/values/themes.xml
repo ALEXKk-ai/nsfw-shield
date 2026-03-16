@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NSFWShield" parent="android:Theme.Material.Light.NoActionBar" />
+    
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Set the splash screen background -->
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <!-- Use the launcher icon for the center symbol -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <!-- Ensure the correct post-splash theme is applied -->
+        <item name="postSplashScreenTheme">@style/Theme.NSFWShield</item>
+    </style>
+</resources>
