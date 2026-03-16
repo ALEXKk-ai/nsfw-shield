@@ -6,9 +6,10 @@ import time
 import os
 
 # Configuration
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HMAC_SECRET = "nsfw-shield-blocklist-signing-key-2026"
-OUTPUT_FILE = "blocklist.json"
-VERSION_FILE = "version.txt"
+OUTPUT_FILE = os.path.join(SCRIPT_DIR, "blocklist.json")
+VERSION_FILE = os.path.join(SCRIPT_DIR, "version.txt")
 MAX_DOMAINS_PER_CATEGORY = 30
 
 # Trusted sources (example URLs - you can add more)
