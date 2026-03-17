@@ -2,11 +2,15 @@ name: Update Blocklist
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Run daily at midnight
+    - cron: '0 21 * * *' # Run daily at midnight Africa/Nairobi (UTC+3)
   workflow_dispatch: # Allow manual trigger
 
 permissions:
   contents: write
+
+concurrency:
+  group: update-blocklist-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   update:
@@ -23,7 +27,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install -r scripts/requirements.txt
 
       - name: Generate blocklist
         run: python scripts/generate_blocklist.py

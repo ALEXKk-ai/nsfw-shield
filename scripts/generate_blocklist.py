@@ -4,6 +4,7 @@ import hmac
 import requests
 import time
 import os
+import sys
 
 # Configuration
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -12,6 +13,8 @@ OUTPUT_FILE = os.path.join(SCRIPT_DIR, "blocklist.json")
 VERSION_FILE = os.path.join(SCRIPT_DIR, "version.txt")
 HISTORY_FILE = os.path.join(SCRIPT_DIR, "history.log")
 MAX_DOMAINS_PER_CATEGORY = 30
+MIN_TOTAL_DOMAINS = 20
+MAX_SHRINK_RATIO = 0.5  # Abort if total domains drop below 50% of previous
 
 # Trusted sources (example URLs - you can add more)
 SOURCES = {
@@ -47,15 +50,17 @@ def fetch_domains(url):
                 # Clean up known non-domain entries
                 if domain not in ["localhost", "broadcasthost"]:
                     domains.add(domain)
-        return list(domains)
+        return list(domains), None
     except Exception as e:
         print(f"Error fetching {url}: {e}")
-        return []
+        return [], str(e)
 
 def generate():
     # 1. Load current version and old domains for comparison
     version = 1
     old_domains = set()
+    old_total = 0
+    old_data = {}
     
     print(f"Checking for existing blocklist at: {OUTPUT_FILE}")
     if os.path.exists(OUTPUT_FILE):
@@ -67,6 +72,7 @@ def generate():
                 # Collect all old domains across all categories
                 for cat in old_data.get("domains", {}).values():
                     old_domains.update(cat)
+                old_total = sum(len(v) for v in old_data.get("domains", {}).values())
             except Exception as e:
                 print(f"Error loading existing blocklist: {e}")
     
@@ -81,10 +87,6 @@ def generate():
             except Exception as e:
                 print(f"Error loading version file: {e}")
 
-    # Increment for this run
-    version += 1
-    print(f"Next version will be v{version}")
-
     # 2. Fetch and categorize domains
     data = {
         "adult": [],
@@ -95,20 +97,48 @@ def generate():
         "hate_speech": []
     }
 
+    fetch_errors = []
     for category, urls in SOURCES.items():
         all_for_cat = set()
         for url in urls:
-            all_for_cat.update(fetch_domains(url))
+            domains, err = fetch_domains(url)
+            if err:
+                fetch_errors.append(f"{url} -> {err}")
+            all_for_cat.update(domains)
         
         # Limit to 30 domains per category to avoid spammy updates
         # We sort them to keep the file stable, but take only the first 30
         list_for_cat = sorted(list(all_for_cat))
         data[category] = list_for_cat[:MAX_DOMAINS_PER_CATEGORY]
 
-    # 3. Create the domains object string for signing
-    # We must match the app's JSONObject.toString() behavior as much as possible, 
-    # but the app parses it back from a string, so we just need a stable JSON string.
-    domains_json_str = json.dumps(data, separators=(',', ':'))
+    # 3a. Fail fast if any source failed to fetch
+    if fetch_errors:
+        print("One or more sources failed to fetch:")
+        for err in fetch_errors:
+            print(f"  - {err}")
+        print("Aborting update to avoid publishing an incomplete blocklist.")
+        sys.exit(1)
+
+    # 3b. Sanity checks to avoid catastrophic shrink
+    new_total = sum(len(v) for v in data.values())
+    if new_total < MIN_TOTAL_DOMAINS:
+        print(f"Aborting update: only {new_total} total domains (min {MIN_TOTAL_DOMAINS}).")
+        sys.exit(1)
+    if old_total > 0 and new_total < int(old_total * MAX_SHRINK_RATIO):
+        print(f"Aborting update: total domains dropped from {old_total} to {new_total}.")
+        sys.exit(1)
+
+    # 3c. If domains are unchanged, skip version bump and exit cleanly
+    if old_data.get("domains") == data:
+        print("No domain changes detected; leaving blocklist unchanged.")
+        return
+
+    # Increment for this run only when domains changed
+    version += 1
+    print(f"Next version will be v{version}")
+
+    # 3. Create a canonical domains string for signing (stable key order, no spaces).
+    domains_json_str = json.dumps(data, separators=(',', ':'), sort_keys=True)
 
     # 4. Generate HMAC Signature
     signature = hmac.new(
@@ -126,7 +156,7 @@ def generate():
 
     # 6. Save files
     with open(OUTPUT_FILE, "w") as f:
-        json.dump(final_output, f, indent=2)
+        json.dump(final_output, f, indent=2, sort_keys=True)
     
     with open(VERSION_FILE, "w") as f:
         f.write(str(version))
