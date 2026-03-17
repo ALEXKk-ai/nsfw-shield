@@ -56,21 +56,34 @@ def generate():
     # 1. Load current version and old domains for comparison
     version = 1
     old_domains = set()
+    
+    print(f"Checking for existing blocklist at: {OUTPUT_FILE}")
     if os.path.exists(OUTPUT_FILE):
         with open(OUTPUT_FILE, "r") as f:
             try:
                 old_data = json.load(f)
-                version = old_data.get("version", 0) + 1
+                version = old_data.get("version", 0)
+                print(f"Found existing blocklist v{version}")
                 # Collect all old domains across all categories
                 for cat in old_data.get("domains", {}).values():
                     old_domains.update(cat)
-            except: pass
+            except Exception as e:
+                print(f"Error loading existing blocklist: {e}")
     
+    print(f"Checking for version file at: {VERSION_FILE}")
     if os.path.exists(VERSION_FILE):
         with open(VERSION_FILE, "r") as f:
             try:
-                version = int(f.read().strip()) + 1
-            except: pass
+                content = f.read().strip()
+                if content:
+                    version = max(version, int(content))
+                    print(f"Found version file with v{version}")
+            except Exception as e:
+                print(f"Error loading version file: {e}")
+
+    # Increment for this run
+    version += 1
+    print(f"Next version will be v{version}")
 
     # 2. Fetch and categorize domains
     data = {
