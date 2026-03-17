@@ -27,6 +27,6 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add scripts/blocklist.json scripts/version.txt
+          git add scripts/blocklist.json scripts/version.txt scripts/history.log
           git commit -m "Auto-update blocklist (v$(cat scripts/version.txt))" || echo "No changes to commit"
           git push

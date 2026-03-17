@@ -10,6 +10,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HMAC_SECRET = "nsfw-shield-blocklist-signing-key-2026"
 OUTPUT_FILE = os.path.join(SCRIPT_DIR, "blocklist.json")
 VERSION_FILE = os.path.join(SCRIPT_DIR, "version.txt")
+HISTORY_FILE = os.path.join(SCRIPT_DIR, "history.log")
 MAX_DOMAINS_PER_CATEGORY = 30
 
 # Trusted sources (example URLs - you can add more)
@@ -52,16 +53,23 @@ def fetch_domains(url):
         return []
 
 def generate():
-    # 1. Load current version
+    # 1. Load current version and old domains for comparison
     version = 1
-    if os.path.exists(VERSION_FILE):
-        with open(VERSION_FILE, "r") as f:
-            version = int(f.read().strip()) + 1
-    elif os.path.exists(OUTPUT_FILE):
+    old_domains = set()
+    if os.path.exists(OUTPUT_FILE):
         with open(OUTPUT_FILE, "r") as f:
             try:
                 old_data = json.load(f)
                 version = old_data.get("version", 0) + 1
+                # Collect all old domains across all categories
+                for cat in old_data.get("domains", {}).values():
+                    old_domains.update(cat)
+            except: pass
+    
+    if os.path.exists(VERSION_FILE):
+        with open(VERSION_FILE, "r") as f:
+            try:
+                version = int(f.read().strip()) + 1
             except: pass
 
     # 2. Fetch and categorize domains
@@ -109,6 +117,20 @@ def generate():
     
     with open(VERSION_FILE, "w") as f:
         f.write(str(version))
+
+    # 7. Update history log with new additions
+    all_new_domains = []
+    for cat_list in data.values():
+        for domain in cat_list:
+            if domain not in old_domains:
+                all_new_domains.append(domain)
+    
+    if all_new_domains:
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+        log_entry = f"[{timestamp}] v{version}: Added {len(all_new_domains)} domains: {', '.join(all_new_domains)}\n"
+        with open(HISTORY_FILE, "a") as f:
+            f.write(log_entry)
+        print(f"Logged {len(all_new_domains)} new domains to {HISTORY_FILE}")
 
     print(f"Successfully generated {OUTPUT_FILE} (v{version}) with {sum(len(v) for v in data.values())} domains.")
 
