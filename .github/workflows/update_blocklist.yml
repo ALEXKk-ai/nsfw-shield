@@ -32,8 +32,8 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          # Add all changes in the scripts directory
-          git add scripts/blocklist.json scripts/version.txt scripts/history.log || echo "Warning: Some files could not be added"
+          # Add all changes in the scripts directory safely
+          git add scripts/
           # Only commit if there are changes
           if [ -n "$(git status --porcelain scripts/)" ]; then
             git commit -m "Auto-update blocklist (v$(cat scripts/version.txt))"
