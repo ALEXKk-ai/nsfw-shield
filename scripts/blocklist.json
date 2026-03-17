@@ -1,6 +1,4 @@
 {
-  "version": 4,
-  "signature": "b3d520ebaf1764e9330a02921f8a707bab98f687588831541b9b8b8cbf4675e3",
   "domains": {
     "adult": [
       "0.0.0.0",
@@ -16,7 +14,6 @@
       "000tristanprod.free.fr",
       "002.pinknotora.net",
       "0022a601.pphost.net",
-      "00366291.euro-maconnerie.fr",
       "005.free-counter.co.uk",
       "006.free-counter.co.uk",
       "006.freecounters.co.uk",
@@ -32,8 +29,10 @@
       "0099997.weebly.com",
       "00author.com",
       "00fun.com",
-      "00go.com"
+      "00go.com",
+      "00it.com"
     ],
+    "drugs": [],
     "gambling": [
       "0.0.0.0",
       "0.0.0.0.creative.hpyrdr.com",
@@ -44,7 +43,6 @@
       "000free.us",
       "000tristanprod.free.fr",
       "0022a601.pphost.net",
-      "00366291.euro-maconnerie.fr",
       "005.free-counter.co.uk",
       "006.free-counter.co.uk",
       "006.freecounters.co.uk",
@@ -64,11 +62,13 @@
       "00author.com",
       "00fun.com",
       "00go.com",
-      "00it.com"
+      "00it.com",
+      "00loo0j.weebly.com"
     ],
-    "drugs": [],
     "gore": [],
-    "self_harm": [],
-    "hate_speech": []
-  }
+    "hate_speech": [],
+    "self_harm": []
+  },
+  "signature": "4252abf5dd21ad7aec5043eeaca38a291dbb0c96b9af9b3b8db6f88b27156ef2",
+  "version": 5
 }
