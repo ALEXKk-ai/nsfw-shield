@@ -5,12 +5,17 @@ on:
     - cron: '0 0 * * *' # Run daily at midnight
   workflow_dispatch: # Allow manual trigger
 
+permissions:
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -27,6 +32,12 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add scripts/blocklist.json scripts/version.txt scripts/history.log
-          git commit -m "Auto-update blocklist (v$(cat scripts/version.txt))" || echo "No changes to commit"
-          git push
+          # Add all changes in the scripts directory
+          git add scripts/blocklist.json scripts/version.txt scripts/history.log || echo "Warning: Some files could not be added"
+          # Only commit if there are changes
+          if [ -n "$(git status --porcelain scripts/)" ]; then
+            git commit -m "Auto-update blocklist (v$(cat scripts/version.txt))"
+            git push
+          else
+            echo "No changes to commit"
+          fi
