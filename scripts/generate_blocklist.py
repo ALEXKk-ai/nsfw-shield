@@ -1,6 +1,7 @@
 import json
 import hashlib
 import hmac
+import ipaddress
 import requests
 import time
 import os
@@ -24,11 +25,22 @@ SOURCES = {
     "gambling": [
         "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling/hosts",
     ],
-    "drugs": [],
-    "gore": [],
+    "drugs": [
+        "https://blocklistproject.github.io/Lists/drugs.txt",
+    ],
+    "gore": [
+        "https://raw.githubusercontent.com/ShadowWhisperer/BlockLists/master/Lists/Shock",
+    ],
     "self_harm": [],
     "hate_speech": []
 }
+
+def _is_ip(token):
+    try:
+        ipaddress.ip_address(token)
+        return True
+    except ValueError:
+        return False
 
 def fetch_domains(url):
     """Simple parser for host-style files."""
@@ -39,17 +51,23 @@ def fetch_domains(url):
         
         domains = set()
         for line in response.text.splitlines():
-            line = line.strip()
+            line = line.split("#", 1)[0].strip()
             if not line or line.startswith("#"):
                 continue
             
-            # Typically "0.0.0.0 domain.com" or "127.0.0.1 domain.com"
             parts = line.split()
-            if len(parts) >= 2:
-                domain = parts[1].lower()
-                # Clean up known non-domain entries
-                if domain not in ["localhost", "broadcasthost"]:
-                    domains.add(domain)
+            if not parts:
+                continue
+
+            # Accept both host-file format ("0.0.0.0 domain.com") and domain-only lists.
+            if len(parts) == 1:
+                domain = parts[0].lower()
+            else:
+                domain = parts[1].lower() if _is_ip(parts[0]) else parts[0].lower()
+
+            # Clean up known non-domain entries and obvious junk.
+            if domain and domain not in ["localhost", "broadcasthost"] and "://" not in domain:
+                domains.add(domain)
         return list(domains), None
     except Exception as e:
         print(f"Error fetching {url}: {e}")
