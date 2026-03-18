@@ -61,6 +61,7 @@ def generate():
     old_domains = set()
     old_total = 0
     old_data = {}
+    old_by_category = {}
     
     print(f"Checking for existing blocklist at: {OUTPUT_FILE}")
     if os.path.exists(OUTPUT_FILE):
@@ -70,8 +71,10 @@ def generate():
                 version = old_data.get("version", 0)
                 print(f"Found existing blocklist v{version}")
                 # Collect all old domains across all categories
-                for cat in old_data.get("domains", {}).values():
-                    old_domains.update(cat)
+                for cat, domains in old_data.get("domains", {}).items():
+                    cat_set = {d.lower() for d in domains}
+                    old_by_category[cat] = cat_set
+                    old_domains.update(cat_set)
                 old_total = sum(len(v) for v in old_data.get("domains", {}).values())
             except Exception as e:
                 print(f"Error loading existing blocklist: {e}")
@@ -106,10 +109,13 @@ def generate():
                 fetch_errors.append(f"{url} -> {err}")
             all_for_cat.update(domains)
         
-        # Limit to 30 domains per category to avoid spammy updates
-        # We sort them to keep the file stable, but take only the first 30
-        list_for_cat = sorted(list(all_for_cat))
-        data[category] = list_for_cat[:MAX_DOMAINS_PER_CATEGORY]
+        # Prioritize newly discovered domains, then fill with existing ones.
+        # This increases the chance of legitimate daily updates while keeping stability.
+        prev_set = old_by_category.get(category, set())
+        new_domains = sorted([d for d in all_for_cat if d not in prev_set])
+        old_domains_still = sorted([d for d in all_for_cat if d in prev_set])
+        combined = new_domains + old_domains_still
+        data[category] = combined[:MAX_DOMAINS_PER_CATEGORY]
 
     # 3a. Fail fast if any source failed to fetch
     if fetch_errors:
