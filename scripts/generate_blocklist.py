@@ -50,6 +50,16 @@ def get_hmac_secret():
         sys.exit(1)
     return HMAC_SECRET
 
+def sign_domains(domains_by_category, signing_secret):
+    """Create a deterministic HMAC signature for the domain payload."""
+    domains_json_str = json.dumps(domains_by_category, separators=(',', ':'), sort_keys=True)
+    signature = hmac.new(
+        signing_secret.encode(),
+        domains_json_str.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return signature
+
 def fetch_domains(url):
     """Simple parser for host-style files."""
     try:
@@ -162,40 +172,35 @@ def generate():
         print(f"Aborting update: total domains dropped from {old_total} to {new_total}.")
         sys.exit(1)
 
-    # 3c. If domains are unchanged, skip version bump and exit cleanly
-    if old_data.get("domains") == data:
-        print("No domain changes detected; leaving blocklist unchanged.")
+    # 3c. Sign the current domain payload before deciding whether the output changed.
+    signature = sign_domains(data, signing_secret)
+
+    domains_unchanged = old_data.get("domains") == data
+    signature_unchanged = old_data.get("signature") == signature
+
+    if domains_unchanged and signature_unchanged:
+        print("No domain or signature changes detected; leaving blocklist unchanged.")
         return
 
-    # Increment for this run only when domains changed
+    # Increment for this run when domains changed or the signature changed because of key rotation.
     version += 1
     print(f"Next version will be v{version}")
 
-    # 3. Create a canonical domains string for signing (stable key order, no spaces).
-    domains_json_str = json.dumps(data, separators=(',', ':'), sort_keys=True)
-
-    # 4. Generate HMAC Signature
-    signature = hmac.new(
-        signing_secret.encode(),
-        domains_json_str.encode(),
-        hashlib.sha256
-    ).hexdigest()
-
-    # 5. Build final object
+    # 4. Build final object
     final_output = {
         "version": version,
         "signature": signature,
         "domains": data
     }
 
-    # 6. Save files
+    # 5. Save files
     with open(OUTPUT_FILE, "w") as f:
         json.dump(final_output, f, indent=2, sort_keys=True)
     
     with open(VERSION_FILE, "w") as f:
         f.write(str(version))
 
-    # 7. Update history log with new additions
+    # 6. Update history log with new additions
     all_new_domains = []
     for cat_list in data.values():
         for domain in cat_list:
@@ -208,6 +213,8 @@ def generate():
         with open(HISTORY_FILE, "a") as f:
             f.write(log_entry)
         print(f"Logged {len(all_new_domains)} new domains to {HISTORY_FILE}")
+    elif domains_unchanged and not signature_unchanged:
+        print("Domains unchanged; updated signature after signing-key rotation.")
 
     print(f"Successfully generated {OUTPUT_FILE} (v{version}) with {sum(len(v) for v in data.values())} domains.")
 
